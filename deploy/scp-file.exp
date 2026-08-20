@@ -1,0 +1,47 @@
+#!/usr/bin/expect -f
+
+set timeout 120
+
+if {$argc < 3} {
+  puts stderr "用法：scp-file.exp <凭据文件> <本地文件> <远程路径>"
+  exit 2
+}
+
+set credentialsFile [lindex $argv 0]
+set localFile [lindex $argv 1]
+set remotePath [lindex $argv 2]
+set handle [open $credentialsFile r]
+set credentials [read $handle]
+close $handle
+
+if {![regexp -nocase {Main IP\s*[:：]\s*([^\r\n]+)} $credentials -> host]} {
+  puts stderr "凭据文件缺少 Main IP"
+  exit 2
+}
+if {![regexp -nocase {Root Password\s*[:：]\s*([^\r\n]+)} $credentials -> password]} {
+  puts stderr "凭据文件缺少 Root Password"
+  exit 2
+}
+
+set host [string trim $host]
+set password [string trim $password]
+
+spawn scp -o StrictHostKeyChecking=accept-new -P 22 -- $localFile root@$host:$remotePath
+expect {
+  -re "(?i)password:" {
+    send -- "$password\r"
+    exp_continue
+  }
+  -re "Permission denied" {
+    puts stderr "SCP 登录失败"
+    exit 3
+  }
+  timeout {
+    puts stderr "SCP 传输超时"
+    exit 4
+  }
+  eof
+}
+
+catch wait result
+exit [lindex $result 3]

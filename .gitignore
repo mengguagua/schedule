@@ -1,0 +1,25 @@
+node_modules/
+dist/
+data/
+backups/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+
+# 本地数据库及运行时文件
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+
+# 密钥、证书和登录凭据
+*.pem
+*.key
+*.p12
+*.pfx
+*.credentials
+credentials/
+secrets/
+code.txt

@@ -1,0 +1,46 @@
+#!/usr/bin/expect -f
+
+set timeout 60
+
+if {$argc < 2} {
+  puts stderr "用法：ssh-run.exp <凭据文件> <远程命令>"
+  exit 2
+}
+
+set credentialsFile [lindex $argv 0]
+set remoteCommand [lindex $argv 1]
+set handle [open $credentialsFile r]
+set credentials [read $handle]
+close $handle
+
+if {![regexp -nocase {Main IP\s*[:：]\s*([^\r\n]+)} $credentials -> host]} {
+  puts stderr "凭据文件缺少 Main IP"
+  exit 2
+}
+if {![regexp -nocase {Root Password\s*[:：]\s*([^\r\n]+)} $credentials -> password]} {
+  puts stderr "凭据文件缺少 Root Password"
+  exit 2
+}
+
+set host [string trim $host]
+set password [string trim $password]
+
+spawn ssh -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=15 -p 22 root@$host $remoteCommand
+expect {
+  -re "(?i)password:" {
+    send -- "$password\r"
+    exp_continue
+  }
+  -re "Permission denied" {
+    puts stderr "SSH 登录失败"
+    exit 3
+  }
+  timeout {
+    puts stderr "SSH 连接超时"
+    exit 4
+  }
+  eof
+}
+
+catch wait result
+exit [lindex $result 3]
